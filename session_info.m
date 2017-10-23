@@ -78,7 +78,7 @@ folder_name = [num2str(rat) '_' sprintf('%02d', session_num) 'p'];
 %folder_name = [num2str(rat) '_' sprintf('%02d', session_num)];
 folder_found = 0;
 if exist([folder_name], 'dir')
-   data_path_base = pwd;
+   data_path_base = pwd; %Current folder
    folder_found = 1;
 end;
 if exist(['d:\data\' folder_name], 'dir')

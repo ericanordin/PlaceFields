@@ -22,7 +22,8 @@ for sess_i = 1:2;
 
    tfile_list = FindFiles('*.t', 'StartingDirectory', sess_info.tfile_path);
    ts_data = LoadSpikes(tfile_list);
-   keep_celli = logical(ones(1,length(ts_data)));
+   keep_celli = logical(ones(1,length(ts_data))); 
+   %keep_celli: 1 marks tetrodes to keep; 0 marks tetrodes to ignore
 
    for i = 1:length(ts_data)
 
@@ -46,6 +47,8 @@ for sess_i = 1:2;
       epoch_counts = NaN*zeros(1,3);
       for j = 1:size(epoch_times,1)
          epoch_counts(j) = sum(times>epoch_times(j,1) & times<epoch_times(j,2));
+         %times>epoch_times(j,1) produces an array declaring whether
+         %times is greater for EACH value of the times array
       end;
       cell_info(i).counts = epoch_counts;
       if cell_info(i).counts(2)<50
