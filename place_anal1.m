@@ -85,7 +85,7 @@ for sess_i = 1:2;
    
    if exist(saved_centers_file)
       cur_ncells = ncells;
-      load(saved_centers_file)
+      load(saved_centers_file) %loading overwrites ncells with value from file
       if cur_ncells ~= ncells
          disp(['Cells in stored file ' saved_centers_file ' dont match current data.  Recompute centers.']); 
          return;
@@ -95,8 +95,8 @@ for sess_i = 1:2;
       centery = ones(1, length(spike_data));
       for i = 1:ncells
          firing_map = histogram2(spike_pos_data{i}(:,2)', spike_pos_data{i}(:,3)', [locx.min locx.max nbins; locy.min locy.max nbins]);
-         spkrate_map = firing_map./occ_map;
-         spkrate_map(isnan(occ_map)) = 0;
+         spkrate_map = firing_map./occ_map; %element-wise division
+         spkrate_map(isnan(occ_map)) = 0; %All values that are NaN in occ_map are made 0 in spkrate_map
          subplot(1,2,1)
          imagesc(smooth(spkrate_map,smoothfac,9,smoothfac, 9));
          subplot(1,2,2)
