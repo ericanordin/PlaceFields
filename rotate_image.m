@@ -1,4 +1,12 @@
-function [out_image_m,out_ref_points_m] = rotate_image( degree, in_image_m, in_ref_points_m )
+function [out_image_m] = rotate_image( degree, in_image_m)
+% Originally from https://www.mathworks.com/matlabcentral/fileexchange/4071-rotate-image
+% Removed reference point parameter and return value
+% Undergoing modifications
+
+% Modifications to make:
+% Remove interpolation and replace points with NaNs
+% Make functional for non-grayscale (3rd dimension)
+
 %
 % rotate_image - rotates an image given inside a matrix by the amount of "degree" counter-clockwise
 %                using linear interpolation of the output grid points from the back-rotated input points
@@ -6,16 +14,10 @@ function [out_image_m,out_ref_points_m] = rotate_image( degree, in_image_m, in_r
 %
 % Format:   [out_image_m,out_ref_points_m] = rotate_image( degree, in_image_m, in_ref_points_m )
 %
-% Input:    degree          - rotation degree in dergees, counter-clockwise
+% Input:    degree          - rotation degree in degrees, counter-clockwise
 %           in_image_m      - input image, given inside a matrix (gray level image only)
-%           in_ref_points_m - points on the image wich their output coordinates will be given
-%                             after the rotation. given format of this matrix is:
-%                             [ x1,x2,...,xn;y1,y2,...,yn]
 %
 % Output:   out_image_m      - the output image
-%           out_ref_points_m - the position of the input handle points after the rotation.
-%                              this element is given in "in_ref_points_m" exists
-%                              format of the matrix is the same as of "in_ref_points_m"
 % 
 % NOTE:     By definition of rotation, in order to perserve all the image inside the
 %           rotated image space, the output image will be a matrix with a bigger size. 
@@ -28,34 +30,28 @@ if (nargin == 0)
     return;
 end
 
-% check input
-if ~exist('in_ref_points_m')
-    in_ref_points_m = [];
-end
-
 % check for easy cases
 switch (mod(degree,360))
-case 0,     
+case 0     
     out_image_m      = in_image_m;
-    out_ref_points_m = in_ref_points_m;
     return;
-case 90,    
-    out_image_m           = in_image_m(:,end:-1:1)';
-    out_ref_points_m      = in_ref_points_m(end:-1:1,:);    
-    out_ref_points_m(2,:) = size(out_image_m,1) - out_ref_points_m(2,:);
+case 90 
+    out_image_m = rot90(in_image_m);
     return;
-case 180,   % TBD for rotation of the ref_points
-    out_image_m           = in_image_m(end:-1:1,end:-1:1);
-    out_ref_points_m      = in_ref_points_m;
-    out_ref_points_m(2,:) = size(out_image_m,2) - out_ref_points_m(2,:);
-    out_ref_points_m(1,:) = size(out_image_m,1) - out_ref_points_m(1,:);
+case 180  
+    tempImage = in_image_m;
+    for t = 1:2
+        tempImage = rot90(tempImage);
+    end
+    out_image_m = tempImage;
     return;
-case 270,   
-    out_image_m           = in_image_m(end:-1:1,:)';
-    out_ref_points_m      = in_ref_points_m(end:-1:1,:);
-    out_ref_points_m(1,:) = size(out_image_m,2) - out_ref_points_m(1,:);
+case 270   
+    tempImage = in_image_m;
+    for t = 1:3
+        tempImage = rot90(tempImage);
+    end
+    out_image_m = tempImage;
     return;
-otherwise,  % enter the routine and do some calculations
 end
 
 % wrap input image by zeros from all sides
@@ -82,12 +78,6 @@ out_size_x          = max( out_x_r ) - min( out_x_r ) + 1;
 out_size_y          = max( out_y_r ) - min( out_y_r ) + 1;
 out_image_m         = zeros( ceil( out_size_y ),ceil( out_size_x ) );
 out_points_span     = (out_x_r-min(out_x_r))*ceil(out_size_y) + out_y_r - min(out_y_r) + 1;
-if ~isempty( in_ref_points_m )
-    out_ref_points_m    = (R * [in_ref_points_m(1,:)-in_mid_x;in_ref_points_m(2,:)-in_mid_y]);
-    out_ref_points_m    = [out_ref_points_m(1,:)-min( out_x_r )+1;out_ref_points_m(2,:)-min( out_y_r )+1];
-else
-    out_ref_points_m    = [];
-end
     
 % % for debug
 % out_image_m(out_points_span) = 1;
@@ -202,7 +192,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function rotate_image_demo
 
-% plot the "child" image, and get it's matrix
+% plot the "child" image, and get its matrix
 close all;
 h           = imagesc;
 in_image_m  = get( h,'cdata' );
