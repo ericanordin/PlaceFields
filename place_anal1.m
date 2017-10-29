@@ -1,7 +1,7 @@
 sessions = [[8068 53]
             [8068 55]];
 
-for sess_i = 1:2;
+for sess_i = 1:2; %Two session from one rat
    
    if 1
    rat = sessions(sess_i, 1);
@@ -15,6 +15,10 @@ for sess_i = 1:2;
 
    % load video tracker data
    disp(['loading PVD files: ' sess_info.pos_file1 ' & ' sess_info.pos_file2]);
+   %pv_data: Video data, position of rat
+   %C1: Time at various positions
+   %C2: x-position
+   %C3: y-position
    pv_data = load(sess_info.pos_file1);
    pv_data = pv_data(logical([diff(pv_data(:,1))>0; 1]),:);
    pv_data = pv_data(:,1:3); % discard some data to save memory
@@ -44,15 +48,19 @@ for sess_i = 1:2;
       spike_data{i} = times;
 
       % count spikes in each epoch
+      %epoch 1 = sleep, 2 = run, 3 = sleep.
+      %epoch_times: row = epoch, column = start/stop time
       epoch_counts = NaN*zeros(1,3);
       for j = 1:size(epoch_times,1)
          epoch_counts(j) = sum(times>epoch_times(j,1) & times<epoch_times(j,2));
          %times>epoch_times(j,1) produces an array declaring whether
          %times is greater for EACH value of the times array
+         %Removes any times not in the epoch. Only concerns run time epoch,
+         %not sleep.
       end;
       cell_info(i).counts = epoch_counts;
-      if cell_info(i).counts(2)<50
-         keep_celli(i) = 0;
+      if cell_info(i).counts(2)<50 %Cells with less than 50 spikes are cut (non-place cells)
+         keep_celli(i) = 0; %Whether cell should be processed
          disp(['Cell TT' num2str(cell_info(i).tet_id) '_' num2str(cell_info(i).cell_num) ' rejected: ' num2str(cell_info(i).counts(2)) ' spikes']);
       end;
 
@@ -61,8 +69,15 @@ for sess_i = 1:2;
       %spike_dist{i} = interp1(pv_data(:,1), cumdist, times);
       disp(['Loaded: ' tfile_list{i}]);
 
+      %Spike data is collected more often than position data
+      %Interpolates the position of the rat for spikes that do not
+      %correspond to recorded positions.
+      %pv_data(:,1) = timestamp {x}
+      %[pv_data(:,2) pv_data(:,3)] = x-position y-position {f(x)}
+      %times {x'}: new values to be interpolated into f(x) data
+      %Output = [x y] interpolated data array
       posit = interp1(pv_data(:,1), [pv_data(:,2) pv_data(:,3)], times);
-      spike_pos_data{i} = [times posit];
+      spike_pos_data{i} = [times posit]; %3 columns: times, x, y
 
    end;  % if exist(sess_info.tfile_path, 'dir')
    spike_pos_data = spike_pos_data(keep_celli);
@@ -75,11 +90,13 @@ for sess_i = 1:2;
    
    
    nbins = 50;
-   smoothfac = .75;
+   smoothfac = .75; %Smoothing factor, determines the degree to which the neighboring points impact the central point (kernel values)
    locx.min = min(pv_data(:,2));
    locx.max = max(pv_data(:,2));
    locy.min = min(pv_data(:,3));
    locy.max = max(pv_data(:,3));
+   %NOT Matlab's built in histogram2 function
+   %Occupancy map: how much time spent in a given location
    occ_map = histogram2(pv_data(:,2)', pv_data(:,3)', [locx.min locx.max nbins; locy.min locy.max nbins]);
    occ_map(occ_map==0) = NaN;
    
@@ -94,17 +111,22 @@ for sess_i = 1:2;
       centerx = ones(1, length(spike_data));
       centery = ones(1, length(spike_data));
       for i = 1:ncells
+         %Firing map: how many spikes fired in a given location
+         %Maps out the entire recording area
          firing_map = histogram2(spike_pos_data{i}(:,2)', spike_pos_data{i}(:,3)', [locx.min locx.max nbins; locy.min locy.max nbins]);
+         %Conversion from number of spikes into spikes per time
          spkrate_map = firing_map./occ_map; %element-wise division
          spkrate_map(isnan(occ_map)) = 0; %All values that are NaN in occ_map are made 0 in spkrate_map
-         subplot(1,2,1)
+         subplot(1,2,1) %smoothed
+         %Averaging over local area with gaussian curve. 
+         %9 = Width of the filter in pixels (where to cut off the filter - 4 on each side of the central pixel)
          imagesc(smooth(spkrate_map,smoothfac,9,smoothfac, 9));
-         subplot(1,2,2)
+         subplot(1,2,2) %unsmoothed
          imagesc(spkrate_map);
-         subplot(1,2,1);
+         subplot(1,2,1); 
          title('click on center of best place field');
          [x, y] = ginput(1);
-         if isempty(x)
+         if isempty(x) %User clicks outside because there is no centre
             centerx(i) = NaN;
             centery(i) = NaN;
          else
@@ -116,6 +138,9 @@ for sess_i = 1:2;
       
    end; % if exist(saved_centers_file)
    
+   %Adds buffer space for shifting place fields back and forth while adding
+   %them for maximum overlap
+   %9x larger than actual recording area
    full_map = NaN*zeros(3*nbins, 3*nbins);
    nb_h = int8(fix(nbins/2));
    map_sum = zeros(2*nb_h + 1, 2*nb_h + 1);
@@ -124,11 +149,13 @@ for sess_i = 1:2;
       firing_map = histogram2(spike_pos_data{i}(:,2)', spike_pos_data{i}(:,3)', [locx.min locx.max nbins; locy.min locy.max nbins]);
       spkrate_map = firing_map./occ_map;
       %spkrate_map(isnan(occ_map)) = 0;
+      %Inserts place cell map into map with buffer
       full_map(nbins+1:2*nbins,nbins+1:2*nbins) = spkrate_map; 
 
       %imagesc(smooth(full_map,smoothfac,9,smoothfac, 9));
       %hold on;
       
+      %Shifts marked centre for full_map pixel marks
       if ~isnan(centerx(i))
          new_centerx = int8(centerx(i) + nbins);
          new_centery = int8(centery(i) + nbins);
@@ -140,6 +167,10 @@ for sess_i = 1:2;
 %          hold off;
          
 %          subplot(1,2,2);
+            %cut_map centres over the place field and removes extraneous 
+            %data far beyond the place cell. Can contain valid (inside 
+            %recording area) and invalid (outside recording area) data 
+            %(ignored during averaging).
           cut_map = full_map(new_centery-nb_h:new_centery+nb_h, new_centerx-nb_h:new_centerx+nb_h);
 %          imagesc(cut_map);
          %pause;
