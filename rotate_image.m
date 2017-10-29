@@ -18,9 +18,9 @@ function [out_image_m] = rotate_image( degree, in_image_m)
 %           in_image_m      - input image, given inside a matrix (gray level image only)
 %
 % Output:   out_image_m      - the output image
-% 
+%
 % NOTE:     By definition of rotation, in order to perserve all the image inside the
-%           rotated image space, the output image will be a matrix with a bigger size. 
+%           rotated image space, the output image will be a matrix with a bigger size.
 %
 
 %  NO INPUT ARGs - Launch demo and exit
@@ -32,44 +32,52 @@ end
 
 % check for easy cases
 switch (mod(degree,360))
-case 0     
-    out_image_m      = in_image_m;
-    return;
-case 90 
-    out_image_m = rot90(in_image_m);
-    return;
-case 180  
-    tempImage = in_image_m;
-    for t = 1:2
-        tempImage = rot90(tempImage);
-    end
-    out_image_m = tempImage;
-    return;
-case 270   
-    tempImage = in_image_m;
-    for t = 1:3
-        tempImage = rot90(tempImage);
-    end
-    out_image_m = tempImage;
-    return;
+    case 0
+        out_image_m      = in_image_m;
+        return;
+    case 90
+        out_image_m = rot90(in_image_m);
+        return;
+    case 180
+        tempImage = in_image_m;
+        for t = 1:2
+            tempImage = rot90(tempImage);
+        end
+        out_image_m = tempImage;
+        return;
+    case 270
+        tempImage = in_image_m;
+        for t = 1:3
+            tempImage = rot90(tempImage);
+        end
+        out_image_m = tempImage;
+        return;
 end
 
-% wrap input image by zeros from all sides
+% wrap input image by one layer of zeros from all sides
 zeros_row    = zeros(1,size(in_image_m,2)+2);
 zeros_column = zeros(size(in_image_m,1),1);
 in_image_m   = [zeros_row; zeros_column,in_image_m,zeros_column; zeros_row ];
 
 % build the rotation matrix
 degree_rad = degree * pi / 180;
+%Applies CLOCKWISE rotation:
 R = [ cos(degree_rad), sin(degree_rad); sin(-degree_rad) cos(degree_rad) ];
+%Applies COUNTERCLOCKWISE rotation:
+%R = [ cos(degree_rad), sin(-degree_rad); sin(degree_rad) cos(degree_rad) ];
 
 % input and output size of matrices (output size is found by rotation of 4 corners)
 in_size_x       = size(in_image_m,2);
 in_size_y       = size(in_image_m,1);
+
+%Middle point = (0,0). Corners are measured relative to origin.
+%in_mid values marking corners may be wrong. If so, do NOT substract 1.
+%-1 appears to take into account width of middle pixel. If odd dimension,
+%middle pixel straddles actual pixels. Keep padded 0s in mind.
 in_mid_x        = (in_size_x-1) / 2;
 in_mid_y        = (in_size_y-1) / 2;
 in_corners_m    = [ [0,0,in_size_x-1,in_size_x-1] - in_mid_x;
-                    [0,in_size_y-1,in_size_y-1,0] - in_mid_y ];
+    [0,in_size_y-1,in_size_y-1,0] - in_mid_y ];
 out_corners_m   = R * in_corners_m;
 
 % the grid (integer grid) of the output image and the output image
@@ -78,7 +86,7 @@ out_size_x          = max( out_x_r ) - min( out_x_r ) + 1;
 out_size_y          = max( out_y_r ) - min( out_y_r ) + 1;
 out_image_m         = zeros( ceil( out_size_y ),ceil( out_size_x ) );
 out_points_span     = (out_x_r-min(out_x_r))*ceil(out_size_y) + out_y_r - min(out_y_r) + 1;
-    
+
 % % for debug
 % out_image_m(out_points_span) = 1;
 % return;
@@ -120,18 +128,18 @@ function [x_r,y_r] = rotated_grid( rect_points_m )
 % Input:    rect_points_m   -   a set of (x;y) points which define a rectangle ordered clock-wise
 %                               ( format: [x1,x2,x3,x4;y1,y2,y3,y4] )
 %
-% Output:   x_r,y_r         -   2 row vectors which hold the x and y positions of 
+% Output:   x_r,y_r         -   2 row vectors which hold the x and y positions of
 %                               the output grid
-% 
+%
 % NOTE:     THE ASSUMPTION IS THAT THE RECTANGLE IS ORDERED CLOCK-WISE !!!
 %           AND THAT THE GIVEN CO-ORDINATES ARE A RECTANGLE !
 %
 
 
 % make sure that the first point of the clock-wise-ordered rectange is of the most left point
-[temp,idx] = min( rect_points_m(1,:) );
+[temp,idx] = min( rect_points_m(1,:) ); %Only works for 2D array
 if ( idx > 1 )
-    rect_points_m = [ rect_points_m(:,idx:end) , rect_points_m(:,1:idx-1) ];
+    rect_points_m = [ rect_points_m(:,idx:end) , rect_points_m(:,1:idx-1) ]; %Moves any column before ind to the right hand side
 end
 
 % put into variables so it is easier to access/read the numbers
@@ -155,21 +163,26 @@ right_crossover = y3 - y4;
 % calculate the position of the edges (left and right) along the y axis
 m = [0:rows] + fraction_bottom ;
 switch (y1)
-case y2, x_left = repmat( ceil( x4 ),size(m) );
-case y4, x_left = repmat( ceil( x2 ),size(m) );
-otherwise 
-    x_left = ( m >= left_crossover ).*ceil( x2 - (x1-x2)/(y1-y2)*(rows-m+2*fraction_bottom) ) + ...
-        ( m < left_crossover ).*ceil( x4 + (x1-x4)/(y1-y4)*m );
+    case y2
+        x_left = repmat( ceil( x4 ),size(m) ); %Left edge along points 1 and 4
+    case y4
+        x_left = repmat( ceil( x2 ),size(m) ); %Left edge along points 1 and 2
+    otherwise
+        x_left = ( m >= left_crossover ).*ceil( x2 - (x1-x2)/(y1-y2)*(rows-m+2*fraction_bottom) ) + ...
+            ( m < left_crossover ).*ceil( x4 + (x1-x4)/(y1-y4)*m );
 end
+
 switch (y3)
-case y2,    x_right = repmat( floor( x4 ),size(m) );
-case y4,    x_right = repmat( floor( x2 ),size(m) );
-otherwise
-    x_right = ( m >= right_crossover ).*floor( x2 - (x3-x2)/(y3-y2)*(rows-m+2*fraction_bottom) ) + ...
-        ( m < right_crossover ).*floor( x4 + (x3-x4)/(y3-y4)*m );
+    case y2
+        x_right = repmat( floor( x4 ),size(m) ); %Right edge along points 3 and 4
+    case y4
+        x_right = repmat( floor( x2 ),size(m) ); %Right edge along points 2 and 3
+    otherwise
+        x_right = ( m >= right_crossover ).*floor( x2 - (x3-x2)/(y3-y2)*(rows-m+2*fraction_bottom) ) + ...
+            ( m < right_crossover ).*floor( x4 + (x3-x4)/(y3-y4)*m );
 end
-      
-% build the output vectors (initialize)      
+
+% build the output vectors (initialize)
 vec_length = sum(x_right-x_left+1);
 x_r = zeros(1,vec_length );
 y_r = zeros(1,vec_length );
@@ -181,7 +194,7 @@ for n = 1:length(m)
         span        = cursor:(x_right(n) - x_left(n) + cursor);
         x_r( span ) = x_left(n):x_right(n);
         y_r( span ) = m(n) + y4;
-        cursor      = cursor + x_right(n) - x_left(n) + 1; 
+        cursor      = cursor + x_right(n) - x_left(n) + 1;
     end
 end
 
