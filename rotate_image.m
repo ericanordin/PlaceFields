@@ -7,6 +7,10 @@ function [out_image_m] = rotate_image( degree, in_image_m)
 % Remove interpolation and replace points with NaNs
 % Make functional for non-grayscale (3rd dimension)
 
+% Have reviewed up to L163; likely will use imTransform instead, but if
+% using this...
+% Do debugging to see what x_left and x_right are compared to rectangle corners in “otherwise” cases
+
 %
 % rotate_image - rotates an image given inside a matrix by the amount of "degree" counter-clockwise
 %                using linear interpolation of the output grid points from the back-rotated input points
