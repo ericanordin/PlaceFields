@@ -172,11 +172,18 @@ for sess_i = 1:2; %Two session from one rat
             %recording area) and invalid (outside recording area) data 
             %(ignored during averaging).
           cut_map = full_map(new_centery-nb_h:new_centery+nb_h, new_centerx-nb_h:new_centerx+nb_h);
+          %new_centerx+nb_h not working when new_centerx is an int8 value
+          %Getting 108+25 = 127 instead of 133
+          
 %          imagesc(cut_map);
          %pause;
       
          nan_i = isnan(cut_map);
          temp_map = cut_map;
+         
+         %numZeros = numel(temp_map) - nnz(temp_map);
+         %disp('Number of 0s: '); disp(numZeros);
+             
          temp_map(nan_i) = 0;  % turn all NaN's to zero
          map_sum = map_sum + temp_map;
          map_count = map_count + ~nan_i;
