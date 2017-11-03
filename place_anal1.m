@@ -142,7 +142,7 @@ for sess_i = 1:2; %Two session from one rat
    %them for maximum overlap
    %9x larger than actual recording area
    full_map = NaN*zeros(3*nbins, 3*nbins);
-   nb_h = int8(fix(nbins/2));
+   nb_h = fix(nbins/2);
    map_sum = zeros(2*nb_h + 1, 2*nb_h + 1);
    map_count = zeros(2*nb_h + 1, 2*nb_h + 1);
    for i = 1:ncells
@@ -157,8 +157,8 @@ for sess_i = 1:2; %Two session from one rat
       
       %Shifts marked centre for full_map pixel marks
       if ~isnan(centerx(i))
-         new_centerx = int8(centerx(i) + nbins);
-         new_centery = int8(centery(i) + nbins);
+         new_centerx = round(centerx(i) + nbins);
+         new_centery = round(centery(i) + nbins);
 
 %          subplot(1,2,1);
 %          imagesc(full_map);
