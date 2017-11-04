@@ -150,9 +150,8 @@ for sess_i = 1:numSessions
     %9x larger than actual recording area
     full_map = NaN*zeros(3*nbins, 3*nbins);
     nb_h = fix(nbins/2);
-    map_sum = zeros(2*nb_h + 1, 2*nb_h + 1);
-    map_count = zeros(2*nb_h + 1, 2*nb_h + 1);
     cut_map = zeros(2*nb_h + 1, 2*nb_h + 1, ncells);
+    
     for i = 1:ncells
         firing_map = histogram2(spike_pos_data{i}(:,2)', spike_pos_data{i}(:,3)', [locx.min locx.max nbins; locy.min locy.max nbins]);
         spkrate_map = firing_map./occ_map;
@@ -200,6 +199,9 @@ for sess_i = 1:numSessions
     end
     
     buffered_map = NaN*zeros(diagonal, diagonal, ncells);
+    map_sum = zeros(diagonal, diagonal);
+    map_count = zeros(diagonal, diagonal);
+    
     bufferWidth = (diagonal-sideLength)/2;
     centredLocation = (bufferWidth+1:sideLength+bufferWidth);
     
@@ -213,8 +215,8 @@ for sess_i = 1:numSessions
         end
     end
     
-    hasBaseMap = 0; %Indicates whether a non-rotated map has been 
-    %set as map_sum to begin rotational comparisons.
+    hasBaseMap = 0; %Indicates whether map_sum has been set to a 
+    %non-rotated map to enable rotational comparisons.
     
     for i = 1:ncells
         %Build nan_i after image rotation and cut down
