@@ -172,7 +172,10 @@ for sess_i = 1:numSessions
             cut_map(:,:,i) = full_map(new_centery-nb_h:new_centery+nb_h, new_centerx-nb_h:new_centerx+nb_h);
             
         else
-            cut_map(:,:,i) = NaN;
+            cut_map(:,:,i) = -1; 
+            %All values in a real cut_map are positive. If a check reveals
+            %a negative value in cut_map, that map will not be used in
+            %map_sum.
         end
         %cut_map = array of trimmed down maps. If cut_map(i) = NaN, cell i
         %is not a place cell
@@ -188,7 +191,7 @@ for sess_i = 1:numSessions
     %Assumes that cut_map is square.
     
     sideLength = size(cut_map, 1);
-    diagonal = ceil(sqrt(2*sidelength^2));
+    diagonal = ceil(sqrt(2*sideLength^2));
     
     if mod(diagonal-sideLength,2) == 1
         %Difference is odd and cut_map will be unable to centre properly in
@@ -196,22 +199,32 @@ for sess_i = 1:numSessions
         diagonal = diagonal + 1;
     end
     
-    buffered_map = zeros(diagonal, diagonal, ncells);
+    buffered_map = NaN*zeros(diagonal, diagonal, ncells);
     bufferWidth = (diagonal-sideLength)/2;
     centredLocation = (bufferWidth+1:sideLength+bufferWidth);
     
     for i = 1:ncells
-        %Add buffer around cut_maps
-        buffered_map(centredLocation, centredLocation, i) = cut_map(:, :, i);
+        %Insert cut_maps into centre of buffered_maps
+        if cut_map(1,1,i) < 0
+            %NaN centre. Ignore map.
+            buffered_map(:, :, i) = -1;
+        else
+            buffered_map(centredLocation, centredLocation, i) = cut_map(:, :, i);
+        end
     end
     
+    hasBaseMap = 0; %Indicates whether a non-rotated map has been 
+    %set as map_sum to begin rotational comparisons.
+    
     for i = 1:ncells
+        %Build nan_i after image rotation and cut down
         nan_i = isnan(cut_map(:,:,i));
         temp_map = cut_map(:,:,i);
         
-        if i == 1
+        if i == 1 || hasBaseMap == 0
             %Skip rotation and add directly to map_sum
             temp_map(nan_i) = 0;  % turn all NaN's to zero
+            %NaN + any number = NaN
             map_sum = map_sum + temp_map;
             map_count = map_count + ~nan_i;
         else
