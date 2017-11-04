@@ -165,35 +165,47 @@ for sess_i = 1:numSessions
             new_centerx = round(centerx(i) + nbins);
             new_centery = round(centery(i) + nbins);
             
-            %          subplot(1,2,1);
-            %          imagesc(full_map);
-            %          hold on;
-            %          plot(new_centerx, new_centery,'xw', 'markersize', 10);
-            %          hold off;
-            
-            %          subplot(1,2,2);
             %cut_map centres over the place field and removes extraneous
             %data far beyond the place cell. Can contain valid (inside
             %recording area) and invalid (outside recording area) data
             %(ignored during averaging).
             cut_map(:,:,i) = full_map(new_centery-nb_h:new_centery+nb_h, new_centerx-nb_h:new_centerx+nb_h);
-            %new_centerx+nb_h not working when new_centerx is an int8 value
-            %Getting 108+25 = 127 instead of 133
-            
-            %          imagesc(cut_map);
-            %pause;
             
         else
             cut_map(:,:,i) = NaN;
         end
         %cut_map = array of trimmed down maps. If cut_map(i) = NaN, cell i
         %is not a place cell
- 
+        
+    end
+    
+    %Use Pythagorean's theorem to find the length of the diagonal across
+    %the cut_map and round up. This will be the width of the buffered_map,
+    %so regardless of the angle of rotation, the rotated buffer_map can be
+    %cut down to its original size and overlaid with another buffered_map
+    %without losing any data.
+    
+    %Assumes that cut_map is square.
+    
+    sideLength = size(cut_map, 1);
+    diagonal = ceil(sqrt(2*sidelength^2));
+    
+    if mod(diagonal-sideLength,2) == 1
+        %Difference is odd and cut_map will be unable to centre properly in
+        %buffered_map. Adds 1 to enable centring. 
+        diagonal = diagonal + 1;
+    end
+    
+    buffered_map = zeros(diagonal, diagonal, ncells);
+    bufferWidth = (diagonal-sideLength)/2;
+    centredLocation = (bufferWidth+1:sideLength+bufferWidth);
+    
+    for i = 1:ncells
+        %Add buffer around cut_maps
+        buffered_map(centredLocation, centredLocation, i) = cut_map(:, :, i);
     end
     
     for i = 1:ncells
-        %Must add buffer around cut_map 
-        
         nan_i = isnan(cut_map(:,:,i));
         temp_map = cut_map(:,:,i);
         
@@ -207,8 +219,6 @@ for sess_i = 1:numSessions
             %Rotate both nan_i and temp_map
             %Trim out area past buffer for overlay comparison
         end
-        
-        
         
     end
     
@@ -225,7 +235,7 @@ for sess_i = 1:numSessions
     subplot(1,2,2);
     imagesc(smooth(avg_map{sess_i}, smoothfac, 9, smoothfac, 9));
     axis equal;
-   
+    
 end
 
 figure;
