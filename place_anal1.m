@@ -1,13 +1,19 @@
 sessions = [[8068 53]
     [8068 55]];
+numSessions = size(sessions, 1);
 
-for sess_i = 1:2 %Two sessions from one rat
+%Pre-allocate avg_map
+avg_map = cell(numSessions, 1);
+
+for sess_i = 1:numSessions
     
     if 1
         rat = sessions(sess_i, 1);
         cur_sess = sessions(sess_i, 2);
         sess_info = session_info(rat, cur_sess, 0); % the last 1 extracts depths
         saved_centers_file = ['R' num2str(rat) 'Sess' num2str(cur_sess) 'PlaceFieldCenters.mat'];
+        
+        
         
         % Load the events file to obtain the epochs info
         disp(['loading Events file: ' sess_info.events_file]);
@@ -26,14 +32,19 @@ for sess_i = 1:2 %Two sessions from one rat
         
         tfile_list = FindFiles('*.t', 'StartingDirectory', sess_info.tfile_path);
         ts_data = LoadSpikes(tfile_list);
-        keep_celli = logical(ones(1,length(ts_data)));
+        keep_celli = true(1,length(ts_data));
         %keep_celli: 1 marks tetrodes to keep; 0 marks tetrodes to ignore
+        
+        %Pre-allocation of arrays
+        cell_info(1:length(ts_data)) = struct('tet_id', 0, 'cell_num', 0, 'filename', '', 'counts', [0 0 0]);
+        spike_data = cell(1,length(ts_data));
+        spike_pos_data = cell(1,length(ts_data));
         
         for i = 1:length(ts_data)
             
             % extract tetrode and cell number from filename
             [path, name, ext] = fileparts(tfile_list{i});
-            tet_name_i = findstr(name, 'TT')+2;
+            tet_name_i = strfind(name, 'TT')+2;
             [tt_id, cell_id] = strread(name, 'TT%dnsc_%d');
             if tt_id>6  % block tetrodes 7-12, which are in frontal cortex
                 keep_celli(i) = 0;
