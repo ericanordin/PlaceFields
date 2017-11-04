@@ -1,7 +1,7 @@
 sessions = [[8068 53]
     [8068 55]];
 
-for sess_i = 1:2; %Two session from one rat
+for sess_i = 1:2 %Two sessions from one rat
     
     if 1
         rat = sessions(sess_i, 1);
@@ -11,7 +11,7 @@ for sess_i = 1:2; %Two session from one rat
         
         % Load the events file to obtain the epochs info
         disp(['loading Events file: ' sess_info.events_file]);
-        [event_data epoch_times] = read_events4(sess_info.events_file);
+        [event_data, epoch_times] = read_events4(sess_info.events_file);
         
         % load video tracker data
         disp(['loading PVD files: ' sess_info.pos_file1 ' & ' sess_info.pos_file2]);
@@ -32,12 +32,12 @@ for sess_i = 1:2; %Two session from one rat
         for i = 1:length(ts_data)
             
             % extract tetrode and cell number from filename
-            [path name ext] = fileparts(tfile_list{i});
+            [path, name, ext] = fileparts(tfile_list{i});
             tet_name_i = findstr(name, 'TT')+2;
-            [tt_id cell_id] = strread(name, 'TT%dnsc_%d');
+            [tt_id, cell_id] = strread(name, 'TT%dnsc_%d');
             if tt_id>6  % block tetrodes 7-12, which are in frontal cortex
                 keep_celli(i) = 0;
-            end;
+            end
             cell_info(i).tet_id = tt_id;
             cell_info(i).cell_num = cell_id;
             cell_info(i).filename = tfile_list{i};
@@ -57,16 +57,13 @@ for sess_i = 1:2; %Two session from one rat
                 %times is greater for EACH value of the times array
                 %Removes any times not in the epoch. Only concerns run time epoch,
                 %not sleep.
-            end;
+            end
             cell_info(i).counts = epoch_counts;
             if cell_info(i).counts(2)<50 %Cells with less than 50 spikes are cut (non-place cells)
                 keep_celli(i) = 0; %Whether cell should be processed
                 disp(['Cell TT' num2str(cell_info(i).tet_id) '_' num2str(cell_info(i).cell_num) ' rejected: ' num2str(cell_info(i).counts(2)) ' spikes']);
-            end;
+            end
             
-            %posit = interp1(pv_data(:,1), [pv_data(:,2) pv_data(:,3)], times);
-            %spike_data{i} = [times posit];
-            %spike_dist{i} = interp1(pv_data(:,1), cumdist, times);
             disp(['Loaded: ' tfile_list{i}]);
             
             %Spike data is collected more often than position data
@@ -79,14 +76,13 @@ for sess_i = 1:2; %Two session from one rat
             posit = interp1(pv_data(:,1), [pv_data(:,2) pv_data(:,3)], times);
             spike_pos_data{i} = [times posit]; %3 columns: times, x, y
             
-        end;  % if exist(sess_info.tfile_path, 'dir')
+        end
         spike_pos_data = spike_pos_data(keep_celli);
         cell_info = cell_info(keep_celli);
         spike_data = spike_data(keep_celli);
         ncells = length(spike_data);
-        %disp(['Cells after screening: ' num2str(ncells)]);
         
-    end;  % if 0
+    end
     
     
     nbins = 50;
@@ -100,13 +96,13 @@ for sess_i = 1:2; %Two session from one rat
     occ_map = histogram2(pv_data(:,2)', pv_data(:,3)', [locx.min locx.max nbins; locy.min locy.max nbins]);
     occ_map(occ_map==0) = NaN;
     
-    if exist(saved_centers_file)
+    if exist(saved_centers_file, 'file')
         cur_ncells = ncells;
         load(saved_centers_file) %loading overwrites ncells with value from file
         if cur_ncells ~= ncells
             disp(['Cells in stored file ' saved_centers_file ' dont match current data.  Recompute centers.']);
             return;
-        end;
+        end
     else
         centerx = ones(1, length(spike_data));
         centery = ones(1, length(spike_data));
@@ -132,11 +128,11 @@ for sess_i = 1:2; %Two session from one rat
             else
                 centerx(i) = x;
                 centery(i) = y;
-            end;
-        end;
+            end
+        end
         save(saved_centers_file, 'centerx', 'centery', 'ncells');
         
-    end; % if exist(saved_centers_file)
+    end
     
     %Adds buffer space for shifting place fields back and forth while adding
     %them for maximum overlap
@@ -145,15 +141,13 @@ for sess_i = 1:2; %Two session from one rat
     nb_h = fix(nbins/2);
     map_sum = zeros(2*nb_h + 1, 2*nb_h + 1);
     map_count = zeros(2*nb_h + 1, 2*nb_h + 1);
+    cut_map = zeros(2*nb_h + 1, 2*nb_h + 1, ncells);
     for i = 1:ncells
         firing_map = histogram2(spike_pos_data{i}(:,2)', spike_pos_data{i}(:,3)', [locx.min locx.max nbins; locy.min locy.max nbins]);
         spkrate_map = firing_map./occ_map;
         %spkrate_map(isnan(occ_map)) = 0;
         %Inserts place cell map into map with buffer
         full_map(nbins+1:2*nbins,nbins+1:2*nbins) = spkrate_map;
-        
-        %imagesc(smooth(full_map,smoothfac,9,smoothfac, 9));
-        %hold on;
         
         %Shifts marked centre for full_map pixel marks
         if ~isnan(centerx(i))
@@ -171,7 +165,7 @@ for sess_i = 1:2; %Two session from one rat
             %data far beyond the place cell. Can contain valid (inside
             %recording area) and invalid (outside recording area) data
             %(ignored during averaging).
-            cut_map(i) = full_map(new_centery-nb_h:new_centery+nb_h, new_centerx-nb_h:new_centerx+nb_h);
+            cut_map(:,:,i) = full_map(new_centery-nb_h:new_centery+nb_h, new_centerx-nb_h:new_centerx+nb_h);
             %new_centerx+nb_h not working when new_centerx is an int8 value
             %Getting 108+25 = 127 instead of 133
             
@@ -179,22 +173,18 @@ for sess_i = 1:2; %Two session from one rat
             %pause;
             
         else
-            cut_map(i) = NaN;
+            cut_map(:,:,i) = NaN;
         end
         %cut_map = array of trimmed down maps. If cut_map(i) = NaN, cell i
         %is not a place cell
-        
-        
-        
-        %end;
-        
-    end;  %
+ 
+    end
     
     for i = 1:ncells
         %Must add buffer around cut_map 
         
-        nan_i = isnan(cut_map(i));
-        temp_map = cut_map(i);
+        nan_i = isnan(cut_map(:,:,i));
+        temp_map = cut_map(:,:,i);
         
         if i == 1
             %Skip rotation and add directly to map_sum
@@ -224,15 +214,15 @@ for sess_i = 1:2; %Two session from one rat
     subplot(1,2,2);
     imagesc(smooth(avg_map{sess_i}, smoothfac, 9, smoothfac, 9));
     axis equal;
-    
-end;
+   
+end
 
 figure;
 nmaps = length(avg_map);
 map_sum = zeros(size(avg_map{1}));
 for i = 1:length(avg_map)
     map_sum = map_sum + avg_map{i};
-end;
+end
 
 grand_avg_map = map_sum./nmaps;
 
