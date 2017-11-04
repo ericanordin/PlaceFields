@@ -7,3 +7,8 @@ tempbuf(2:end-1, 2:end-1) = temp_map;
 t2 = imrotate(tempbuf, 30);
 imagesc(t2);
 %nan_i may need buffer and rotation as well
+
+%Buffer size should be diagonal length of image so that rotation will never
+%go out of bounds
+%51x51 = 72.12 diagonal -> 73
+%Trim down image to be size of unrotated image after rotation has occurred
