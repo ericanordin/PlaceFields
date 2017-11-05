@@ -245,8 +245,11 @@ for sess_i = 1:numSessions
                 hasBaseMap = 1;
             else
                 max_overlap = buffered_map(:,:,i);
-                %Check rotations for max overlap
-                %Trim out area past buffer for overlay comparison
+                nan_i = isnan(max_overlap(:,:)); %nan_i is made after rotation
+                max_overlap(nan_i) = 0;  % turn all NaN's to zero
+                overlapped_array_max = max_overlap.*map_sum;
+                sum_max = sum(sum(overlapped_array_max));
+
                 for angle = 1:maxRotations
                     %Rotate
                     temp_map = imrotate(buffered_map(:,:,i), angle);
@@ -306,6 +309,17 @@ for sess_i = 1:numSessions
                     
                     temp_map = temp_map(upperBound+1:lowerBound, ...
                         leftBound+1:rightBound);
+                    nan_i_temp = isnan(temp_map(:,:)); 
+                    temp_map(nan_i_temp) = 0;  % turn all NaN's to zero
+                    overlapped_array_temp = temp_map.*map_sum;
+                    sum_temp = sum(sum(overlapped_array_temp));
+                    
+                    if sum_temp > sum_max
+                        max_overlap = temp_map;
+                        nan_i = nan_i_temp;
+                        overlapped_array_max = overlapped_array_temp;
+                        sum_max = sum_temp;
+                    end
                     
                     %Check whether overlap from temp_map is better than 
                     %max_overlap. If
@@ -315,11 +329,8 @@ for sess_i = 1:numSessions
                     
                 end
             end
-            
-            nan_i = isnan(temp_map(:,:)); %nan_i is made after rotation
-            temp_map(nan_i) = 0;  % turn all NaN's to zero
-            %NaN + any number = NaN
-            map_sum = map_sum + temp_map;
+
+            map_sum = map_sum + max_overlap;
             map_count = map_count + ~nan_i;
             
         end
