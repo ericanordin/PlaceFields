@@ -241,11 +241,13 @@ for sess_i = 1:numSessions
         if buffered_map(1,1,i) ~= -1
             if hasBaseMap == 0
                 %Skip rotation
-                temp_map = buffered_map(:,:,i);
+                max_overlap = buffered_map(:,:,i);
+                nan_i = isnan(max_overlap(:,:)); 
+                max_overlap(nan_i) = 0;  % turn all NaN's to zero
                 hasBaseMap = 1;
             else
                 max_overlap = buffered_map(:,:,i);
-                nan_i = isnan(max_overlap(:,:)); %nan_i is made after rotation
+                nan_i = isnan(max_overlap(:,:)); 
                 max_overlap(nan_i) = 0;  % turn all NaN's to zero
                 overlapped_array_max = max_overlap.*map_sum;
                 sum_max = sum(sum(overlapped_array_max));
@@ -312,7 +314,12 @@ for sess_i = 1:numSessions
                     nan_i_temp = isnan(temp_map(:,:)); 
                     temp_map(nan_i_temp) = 0;  % turn all NaN's to zero
                     overlapped_array_temp = temp_map.*map_sum;
+                    %Check overlap with multiplication.
                     sum_temp = sum(sum(overlapped_array_temp));
+                    
+                    %Check whether overlap from temp_map is better than 
+                    %max_overlap. If
+                    %yes, set max_overlap to rotated matrix.
                     
                     if sum_temp > sum_max
                         max_overlap = temp_map;
@@ -321,11 +328,8 @@ for sess_i = 1:numSessions
                         sum_max = sum_temp;
                     end
                     
-                    %Check whether overlap from temp_map is better than 
-                    %max_overlap. If
-                    %yes, set max_overlap to rotated matrix.
-                    %Check overlap with multiplication or addition? If
-                    %multiplication, what to do about 0s/NaNs?
+                    
+                    
                     
                 end
             end
