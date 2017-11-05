@@ -5,7 +5,7 @@ numSessions = size(sessions, 1);
 %Pre-allocate avg_map
 avg_map = cell(numSessions, 1);
 
-maxRotation = 60; %Highest degree of rotation to be checked
+maxRotations = 60; %Highest degree of rotation to be checked
 
 for sess_i = 1:numSessions
     
@@ -183,33 +183,33 @@ for sess_i = 1:numSessions
         
     end
     
-    %Use Pythagorean's theorem to find the length of the diagonal across
-    %the cut_map and round up. This will be the width of the buffered_map,
+    %Assumes that cut_map is square.
+    sideLength = size(cut_map, 1);
+    
+    %Size of the buffered map is double the size of cut_map
     %so regardless of the angle of rotation, the rotated buffer_map can be
     %cut down to its original size and overlaid with another buffered_map
-    %without losing any data.
+    %without losing any data or including 0s added by rotation
+    sidePlusBuffer = sideLength*2;
     
-    %Assumes that cut_map is square.
-    
-    sideLength = size(cut_map, 1);
-    diagonal = ceil(sqrt(2*sideLength^2));
-    
-    if mod(diagonal-sideLength,2) == 1
+    if mod(sidePlusBuffer-sideLength,2) == 1
         %Difference is odd and cut_map will be unable to centre properly in
         %buffered_map. Adds 1 to enable centring.
-        diagonal = diagonal + 1;
+        sidePlusBuffer = sidePlusBuffer + 1;
     end
     
-    buffered_map = NaN*zeros(diagonal, diagonal, ncells);
-    map_sum = zeros(diagonal, diagonal);
-    map_count = zeros(diagonal, diagonal);
+    buffered_map = NaN*zeros(sidePlusBuffer, sidePlusBuffer, ncells);
+    map_sum = zeros(sidePlusBuffer, sidePlusBuffer);
+    map_count = zeros(sidePlusBuffer, sidePlusBuffer);
     
-    bufferWidth = (diagonal-sideLength)/2;
+    bufferWidth = (sidePlusBuffer-sideLength)/2;
     centredLocation = (bufferWidth+1:sideLength+bufferWidth);
+
+
     
     %Template to find corners in predictable locations following rotation.
     %Corners are marked with 1s to allow them to be found once rotation occurs.
-    unrotatedCorners = zeros(diagonal, diagonal);
+    unrotatedCorners = zeros(sidePlusBuffer, sidePlusBuffer);
     unrotatedCorners(bufferWidth+1, bufferWidth+1) = 1; %Upper left corner
     unrotatedCorners(bufferWidth+1, sideLength+bufferWidth) = 1; %Upper right corner
     unrotatedCorners(sideLength+bufferWidth, bufferWidth+1) = 1; %Lower left corner
@@ -217,13 +217,12 @@ for sess_i = 1:numSessions
     
     %Makes matrix which mimics the rotation of the buffered array for 
     %1:maxRotation degrees.
-    rotatedCorners(:,:,1:maxRotations) = unrotatedCorners;
-    for angle = 1:maxRotation
-        rotatedCorners(:,:,angle) = imrotate(unrotatedCorners, angle);
+    rotatedCorners = cell(maxRotations,1);
+    for i = 1:maxRotations
+        rotatedCorners{i} = imrotate(unrotatedCorners, i);
     end
-    %Problem: Not all filled in values are outside of rotated corners
-    %boundaries
-    
+
+   
     for i = 1:ncells
         %Insert cut_maps into centre of buffered_maps
         if cut_map(1,1,i) < 0
@@ -239,8 +238,6 @@ for sess_i = 1:numSessions
     
     for i = 1:ncells
         %Build nan_i after image rotation and cut down
-        %nan_i = isnan(cut_map(:,:,i));
-        %temp_map = cut_map(:,:,i);
         if buffered_map(1,1,i) ~= -1
             if hasBaseMap == 0
                 %Skip rotation
@@ -250,19 +247,31 @@ for sess_i = 1:numSessions
                 max_overlap = buffered_map(:,:,i);
                 %Check rotations for max overlap
                 %Trim out area past buffer for overlay comparison
-                for angle = 1:maxRotation
+                for angle = 1:maxRotations
                     %Rotate
                     temp_map = imrotate(buffered_map(:,:,i), angle);
                     
+                    
                     %Convert regions outside of buffer to NaN
-                    [cornerRow, cornerColumn] = find(rotatedCorners(:,:,angle));
+                    
+                    %Determine boundaries of cut_map portion of
+                    %buffered_map
+                    [cornerRow, cornerColumn] = find(rotatedCorners{angle});
                     leftLimit = min(cornerColumn)-1;
                     rightLimit = max(cornerColumn)+1;
-                    upperLimit = max(cornerRow)+1;
-                    lowerLimit = min(cornerRow)-1;
+                    lowerLimit = max(cornerRow)+1;
+                    upperLimit = min(cornerRow)-1;
                     
+                    %Fill in 0s added by imrotate with NaNs by making
+                    %everything past boundaries of cut_map NaN
+                    temp_map(1:leftLimit,:) = NaN;
+                    temp_map(rightLimit:end,:) = NaN;
+                    temp_map(:,1:upperLimit) = NaN;
+                    temp_map(:,lowerLimit:end) = NaN;
+
                     
                     %Trim
+                    %Must account for even or odd length of rotated map
                     
                     %Check whether overlap from temp_map is better than 
                     %max_overlap. If
@@ -271,11 +280,13 @@ for sess_i = 1:numSessions
                     %multiplication, what to do about 0s/NaNs?
                 end
             end
+            %{
             nan_i = isnan(temp_map(:,:,i)); %nan_i is made after rotation
             temp_map(nan_i) = 0;  % turn all NaN's to zero
             %NaN + any number = NaN
             map_sum = map_sum + temp_map;
             map_count = map_count + ~nan_i;
+            %}
         end
         
     end
