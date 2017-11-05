@@ -135,7 +135,7 @@ for sess_i = 1:numSessions
             subplot(1,2,1);
             title('click on center of best place field');
             [x, y] = ginput(1);
-            if isempty(x) %User clicks outside because there is no centre
+            if isempty(x) %User presses 'Enter' because there is no centre
                 centerx(i) = NaN;
                 centery(i) = NaN;
             else
