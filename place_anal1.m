@@ -5,6 +5,8 @@ numSessions = size(sessions, 1);
 %Pre-allocate avg_map
 avg_map = cell(numSessions, 1);
 
+maxRotation = 60; %Highest degree of rotation to be checked
+
 for sess_i = 1:numSessions
     
     if 1
@@ -171,7 +173,7 @@ for sess_i = 1:numSessions
             cut_map(:,:,i) = full_map(new_centery-nb_h:new_centery+nb_h, new_centerx-nb_h:new_centerx+nb_h);
             
         else
-            cut_map(:,:,i) = -1; 
+            cut_map(:,:,i) = -1;
             %All values in a real cut_map are positive. If a check reveals
             %a negative value in cut_map, that map will not be used in
             %map_sum.
@@ -194,7 +196,7 @@ for sess_i = 1:numSessions
     
     if mod(diagonal-sideLength,2) == 1
         %Difference is odd and cut_map will be unable to centre properly in
-        %buffered_map. Adds 1 to enable centring. 
+        %buffered_map. Adds 1 to enable centring.
         diagonal = diagonal + 1;
     end
     
@@ -204,6 +206,23 @@ for sess_i = 1:numSessions
     
     bufferWidth = (diagonal-sideLength)/2;
     centredLocation = (bufferWidth+1:sideLength+bufferWidth);
+    
+    %Template to find corners in predictable locations following rotation.
+    %Corners are marked with 1s to allow them to be found once rotation occurs.
+    unrotatedCorners = zeros(diagonal, diagonal);
+    unrotatedCorners(bufferWidth+1, bufferWidth+1) = 1; %Upper left corner
+    unrotatedCorners(bufferWidth+1, sideLength+bufferWidth) = 1; %Upper right corner
+    unrotatedCorners(sideLength+bufferWidth, bufferWidth+1) = 1; %Lower left corner
+    unrotatedCorners(sideLength+bufferWidth, sideLength+bufferWidth) = 1; %Lower right corner
+    
+    %Makes matrix which mimics the rotation of the buffered array for 
+    %1:maxRotation degrees.
+    rotatedCorners(:,:,1:maxRotations) = unrotatedCorners;
+    for angle = 1:maxRotation
+        rotatedCorners(:,:,angle) = imrotate(unrotatedCorners, angle);
+    end
+    %Problem: Not all filled in values are outside of rotated corners
+    %boundaries
     
     for i = 1:ncells
         %Insert cut_maps into centre of buffered_maps
@@ -215,24 +234,48 @@ for sess_i = 1:numSessions
         end
     end
     
-    hasBaseMap = 0; %Indicates whether map_sum has been set to a 
+    hasBaseMap = 0; %Indicates whether map_sum has been set to a
     %non-rotated map to enable rotational comparisons.
     
     for i = 1:ncells
         %Build nan_i after image rotation and cut down
-        nan_i = isnan(cut_map(:,:,i));
-        temp_map = cut_map(:,:,i);
-        
-        if i == 1 || hasBaseMap == 0
-            %Skip rotation and add directly to map_sum
+        %nan_i = isnan(cut_map(:,:,i));
+        %temp_map = cut_map(:,:,i);
+        if buffered_map(1,1,i) ~= -1
+            if hasBaseMap == 0
+                %Skip rotation
+                temp_map = buffered_map(:,:,i);
+                hasBaseMap = 1;
+            else
+                max_overlap = buffered_map(:,:,i);
+                %Check rotations for max overlap
+                %Trim out area past buffer for overlay comparison
+                for angle = 1:maxRotation
+                    %Rotate
+                    temp_map = imrotate(buffered_map(:,:,i), angle);
+                    
+                    %Convert regions outside of buffer to NaN
+                    [cornerRow, cornerColumn] = find(rotatedCorners(:,:,angle));
+                    leftLimit = min(cornerColumn)-1;
+                    rightLimit = max(cornerColumn)+1;
+                    upperLimit = max(cornerRow)+1;
+                    lowerLimit = min(cornerRow)-1;
+                    
+                    
+                    %Trim
+                    
+                    %Check whether overlap from temp_map is better than 
+                    %max_overlap. If
+                    %yes, set max_overlap to rotated matrix.
+                    %Check overlap with multiplication or addition? If
+                    %multiplication, what to do about 0s/NaNs?
+                end
+            end
+            nan_i = isnan(temp_map(:,:,i)); %nan_i is made after rotation
             temp_map(nan_i) = 0;  % turn all NaN's to zero
             %NaN + any number = NaN
             map_sum = map_sum + temp_map;
             map_count = map_count + ~nan_i;
-        else
-            %Check rotations for max overlap
-            %Rotate both nan_i and temp_map
-            %Trim out area past buffer for overlay comparison
         end
         
     end
