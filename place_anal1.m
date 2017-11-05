@@ -269,24 +269,59 @@ for sess_i = 1:numSessions
                     temp_map(:,1:upperLimit) = NaN;
                     temp_map(:,lowerLimit:end) = NaN;
 
+                    %The amount to be trimmed off of each side
+                    %Assumes square trimming
+                    trimSide = (size(temp_map,1) - sidePlusBuffer)/2; 
+                    %Must account for whole (remainer == 0) or non-whole 
+                    %(remainder ~= 0) trimSide value for even or odd size
+                    %of temp_map
+                    remainder = rem(trimSide, floor(trimSide));
+                    if remainder == 0
+                        %Same trim taken from all sides
+                        leftBound = trimSide;
+                        upperBound = trimSide;
+                        rightBound = size(temp_map,2) - trimSide;
+                        lowerBound = size(temp_map,1) - trimSide;
+                    else
+                        if leftLimit > (size(temp_map,2) - rightLimit)
+                            %More trim taken from left buffer
+                            leftBound = ceil(trimSide);
+                            rightBound = size(temp_map,2) - floor(trimSide);
+                        else
+                            %More trim taken from right buffer
+                            leftBound = floor(trimSide);
+                            rightBound = size(temp_map,2) - ceil(trimSide);
+                        end
+                        
+                        if upperLimit > (size(temp_map,1) - lowerLimit)
+                            %More trim taken from upper buffer
+                            upperBound = ceil(trimSide);
+                            lowerBound = size(temp_map,1) - floor(trimSide);
+                        else
+                            %More trim taken from lower buffer
+                            upperBound = floor(trimSide);
+                            lowerBound = size(temp_map,1) - ceil(trimSide);
+                        end
+                    end
                     
-                    %Trim
-                    %Must account for even or odd length of rotated map
+                    temp_map = temp_map(upperBound+1:lowerBound, ...
+                        leftBound+1:rightBound);
                     
                     %Check whether overlap from temp_map is better than 
                     %max_overlap. If
                     %yes, set max_overlap to rotated matrix.
                     %Check overlap with multiplication or addition? If
                     %multiplication, what to do about 0s/NaNs?
+                    
                 end
             end
-            %{
-            nan_i = isnan(temp_map(:,:,i)); %nan_i is made after rotation
+            
+            nan_i = isnan(temp_map(:,:)); %nan_i is made after rotation
             temp_map(nan_i) = 0;  % turn all NaN's to zero
             %NaN + any number = NaN
             map_sum = map_sum + temp_map;
             map_count = map_count + ~nan_i;
-            %}
+            
         end
         
     end
