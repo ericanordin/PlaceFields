@@ -249,11 +249,12 @@ for sess_i = 1:numSessions
                 max_overlap = buffered_map(:,:,i);
                 nan_i = isnan(max_overlap(:,:)); 
                 max_overlap(nan_i) = 0;  % turn all NaN's to zero
-                %overlapped_array_max = max_overlap.*map_sum;
-                %sum_max = sum(sum(overlapped_array_max));
                 
                 max_corr = diag(corrcoef(max_overlap,map_sum),1);
-                angle_vs_corr = zeros(maxRotations, 2);
+                %Correlation between max_overlap and map_sum
+                angle_vs_corr = zeros(maxRotations+1, 2);
+                angle_vs_corr(1,1) = 0;
+                angle_vs_corr(1,2) = max_corr;
 
                 for angle = 1:maxRotations
                     %Rotate
@@ -316,37 +317,37 @@ for sess_i = 1:numSessions
                         leftBound+1:rightBound);
                     nan_i_temp = isnan(temp_map(:,:)); 
                     temp_map(nan_i_temp) = 0;  % turn all NaN's to zero
-                    %overlapped_array_temp = temp_map.*map_sum;
-                    %Check overlap with multiplication.
-                    %sum_temp = sum(sum(overlapped_array_temp));
                     temp_corr = diag(corrcoef(temp_map,map_sum),1);
+                    %Correlation between temp_map and map_sum
                     
-                    angle_vs_corr(angle, 1) = angle;
-                    angle_vs_corr(angle, 2) = temp_corr;
-                    %Check whether overlap from temp_map is better than 
-                    %max_overlap. If
-                    %yes, set max_overlap to rotated matrix.
+                    angle_vs_corr(angle+1, 1) = angle;
+                    angle_vs_corr(angle+1, 2) = temp_corr;
+                    %Check whether correlation from temp_map is better than 
+                    %max_overlap. If yes, set max_overlap to rotated matrix.
                     
-                    %if sum_temp > sum_max
                     if temp_corr > max_corr
                         max_overlap = temp_map;
                         nan_i = nan_i_temp;
-                        %overlapped_array_max = overlapped_array_temp;
-                        %sum_max = sum_temp;
                         max_corr = temp_corr;
                     end
                 end
-                %{
-                subplot(2,1,1);
+                
+                figure('Position', [1400 500 1000 1000]);
+                subplot(2,1,1);%, 'Xlim', [0 359]);                
                 plot(angle_vs_corr(:,1), angle_vs_corr(:,2));
+                xlim([0 359]);
+                title('Angle vs Correlation');
                 subplot(2,3,4);
                 imagesc(map_sum);
+                title('Running total');
                 subplot(2,3,5);
                 imagesc(buffered_map(:,:,i));
+                title('Unrotated cell');
                 subplot(2,3,6);
                 imagesc(max_overlap);
+                title('Rotated for max overlap');
                 pause;
-                %}
+                
             end
 
             map_sum = map_sum + max_overlap;
