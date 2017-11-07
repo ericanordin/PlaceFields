@@ -336,7 +336,7 @@ for sess_i = 1:numSessions
                         max_corr = temp_corr;
                     end
                 end
-                
+                %{
                 subplot(2,1,1);
                 plot(angle_vs_corr(:,1), angle_vs_corr(:,2));
                 subplot(2,3,4);
@@ -346,7 +346,7 @@ for sess_i = 1:numSessions
                 subplot(2,3,6);
                 imagesc(max_overlap);
                 pause;
-                
+                %}
             end
 
             map_sum = map_sum + max_overlap;
@@ -361,8 +361,8 @@ for sess_i = 1:numSessions
     
     figure;
     avg_map{sess_i} = map_sum./map_count;
-    nan_i_avg = isnan(avg_map{i}(:,:)); 
-    avg_map{i}(nan_i_avg) = 0;
+    nan_i_avg = isnan(avg_map{sess_i}(:,:)); 
+    avg_map{sess_i}(nan_i_avg) = 0;
     subplot(1,2,1);
     imagesc(avg_map{sess_i});
     axis equal;
