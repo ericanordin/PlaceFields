@@ -361,7 +361,8 @@ for sess_i = 1:numSessions
     
     figure;
     avg_map{sess_i} = map_sum./map_count;
-    all_maps_sum{i} = map_sum;
+    nan_i_avg = isnan(avg_map{i}(:,:)); 
+    avg_map{i}(nan_i_avg) = 0;
     subplot(1,2,1);
     imagesc(avg_map{sess_i});
     axis equal;
@@ -380,7 +381,7 @@ for i = 1:length(avg_map)
     total_sum = total_sum + avg_map{i};
 end
 
-grand_avg_map = map_sum./nmaps;
+grand_avg_map = total_sum./nmaps;
 
 imagesc(grand_avg_map);
 axis equal;
