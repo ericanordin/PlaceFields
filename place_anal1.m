@@ -257,66 +257,10 @@ for sess_i = 1:numSessions
                 angle_vs_corr(1,2) = max_corr;
 
                 for angle = 1:maxRotations
-                    %Rotate
-                    temp_map = imrotate(buffered_map(:,:,i), angle, 'bilinear');
                     
+                    [temp_map, nan_i_temp] = rotateAndPrep(buffered_map(:,:,i), ...
+                        angle, sidePlusBuffer, rotatedCorners{angle});
                     
-                    %Convert regions outside of buffer to NaN
-                    
-                    %Determine boundaries of cut_map portion of
-                    %buffered_map
-                    [cornerRow, cornerColumn] = find(rotatedCorners{angle});
-                    leftLimit = min(cornerColumn)-1;
-                    rightLimit = max(cornerColumn)+1;
-                    lowerLimit = max(cornerRow)+1;
-                    upperLimit = min(cornerRow)-1;
-                    
-                    %Fill in 0s added by imrotate with NaNs by making
-                    %everything past boundaries of cut_map NaN
-                    temp_map(1:leftLimit,:) = NaN;
-                    temp_map(rightLimit:end,:) = NaN;
-                    temp_map(:,1:upperLimit) = NaN;
-                    temp_map(:,lowerLimit:end) = NaN;
-
-                    %The amount to be trimmed off of each side
-                    %Assumes square trimming
-                    trimSide = (size(temp_map,1) - sidePlusBuffer)/2; 
-                    %Must account for whole (remainer == 0) or non-whole 
-                    %(remainder ~= 0) trimSide value for even or odd size
-                    %of temp_map
-                    remainder = rem(trimSide, floor(trimSide));
-                    if remainder == 0
-                        %Same trim taken from all sides
-                        leftBound = trimSide;
-                        upperBound = trimSide;
-                        rightBound = size(temp_map,2) - trimSide;
-                        lowerBound = size(temp_map,1) - trimSide;
-                    else
-                        if leftLimit > (size(temp_map,2) - rightLimit)
-                            %More trim taken from left buffer
-                            leftBound = ceil(trimSide);
-                            rightBound = size(temp_map,2) - floor(trimSide);
-                        else
-                            %More trim taken from right buffer
-                            leftBound = floor(trimSide);
-                            rightBound = size(temp_map,2) - ceil(trimSide);
-                        end
-                        
-                        if upperLimit > (size(temp_map,1) - lowerLimit)
-                            %More trim taken from upper buffer
-                            upperBound = ceil(trimSide);
-                            lowerBound = size(temp_map,1) - floor(trimSide);
-                        else
-                            %More trim taken from lower buffer
-                            upperBound = floor(trimSide);
-                            lowerBound = size(temp_map,1) - ceil(trimSide);
-                        end
-                    end
-                    
-                    temp_map = temp_map(upperBound+1:lowerBound, ...
-                        leftBound+1:rightBound);
-                    nan_i_temp = isnan(temp_map(:,:)); 
-                    temp_map(nan_i_temp) = 0;  % turn all NaN's to zero
                     temp_corr = diag(corrcoef(temp_map,map_sum),1);
                     %Correlation between temp_map and map_sum
                     
@@ -332,7 +276,10 @@ for sess_i = 1:numSessions
                     end
                 end
                 
-                figure('Position', [1400 500 1000 1000]);
+                
+                f = figure;
+                %figure('Position', [1400 500 1000 1000]); %CCBN
+                set(f,'Position', [100 100 1000 1000]); %Home
                 subplot(2,1,1);%, 'Xlim', [0 359]);                
                 plot(angle_vs_corr(:,1), angle_vs_corr(:,2));
                 xlim([0 359]);
