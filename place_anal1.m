@@ -276,7 +276,7 @@ for sess_i = 1:numSessions
                     end
                 end
                 
-                
+                %{
                 f = figure;
                 %figure('Position', [1400 500 1000 1000]); %CCBN
                 set(f,'Position', [100 100 1000 1000]); %Home
@@ -294,7 +294,7 @@ for sess_i = 1:numSessions
                 imagesc(max_overlap);
                 title('Rotated for max overlap');
                 pause;
-                
+                %}
             end
 
             map_sum = map_sum + max_overlap;
@@ -325,8 +325,26 @@ end
 figure;
 nmaps = length(avg_map);
 total_sum = zeros(size(avg_map{1}));
+hasBaseTotal = 0;
+
 for i = 1:length(avg_map)
-    total_sum = total_sum + avg_map{i};
+    if hasBaseTotal == 0
+        max_overlap_total = avg_map{i};
+        hasBaseTotal = 1;
+    else
+        max_overlap_total = avg_map{i};
+        max_corr_total = diag(corrcoef(max_overlap_total, total_sum),1);
+        for angle = 1:maxRotations
+            [temp_map_total, ~] = rotateAndPrep(avg_map{i}, angle, ...
+                sidePlusBuffer, rotatedCorners{angle});
+            temp_corr_total = diag(corrcoef(temp_map_total, total_sum),1);
+            if temp_corr_total > max_corr_total
+                max_overlap_total = temp_map_total;
+                max_corr_total = temp_corr_total;
+            end
+        end
+    end
+    total_sum = total_sum + max_overlap_total;
 end
 
 grand_avg_map = total_sum./nmaps;
