@@ -236,6 +236,9 @@ for sess_i = 1:numSessions
     hasBaseMap = 0; %Indicates whether map_sum has been set to a
     %non-rotated map to enable rotational comparisons.
     
+    smoothfac_rot = 0.75; %Smoothing factor for matrix to be rotated
+    filterWidth_rot = 2; %Filter width for matrix to be rotated
+    
     for i = 1:ncells
         %Build nan_i after image rotation and cut down
         if buffered_map(1,1,i) ~= -1
@@ -246,6 +249,13 @@ for sess_i = 1:numSessions
                 max_overlap(nan_i) = 0;  % turn all NaN's to zero
                 hasBaseMap = 1;
             else
+                smoothUnrotated = buffered_map(:,:,i);
+                nan_i_smoothed = isnan(smoothUnrotated(:,:));
+                smoothUnrotated(nan_i_smoothed) = 0;
+                smoothUnrotated = smooth(smoothUnrotated, ...
+                    smoothfac_rot,filterWidth_rot,smoothfac_rot, ...
+                    filterWidth_rot);
+                
                 max_overlap = buffered_map(:,:,i);
                 nan_i = isnan(max_overlap(:,:)); 
                 max_overlap(nan_i) = 0;  % turn all NaN's to zero
@@ -257,10 +267,12 @@ for sess_i = 1:numSessions
                 max_corr = diag(corrcoef(blankedMap_unrotated, ...
                     map_sum),1);
                 %Correlation between blankedMap_unrotated and map_sum
+                max_corr = diag(corrcoef(smoothUnrotated,map_sum),1);
+                %Correlation between max_overlap and map_sum
                 angle_vs_corr = zeros(maxRotations+1, 2);
                 angle_vs_corr(1,1) = 0;
                 angle_vs_corr(1,2) = max_corr;
-                
+
                 for angle = 1:maxRotations
                     
                     [blankedMap_rotated, ~] = rotateAndPrep(...
@@ -270,6 +282,11 @@ for sess_i = 1:numSessions
                     temp_corr = diag(corrcoef(blankedMap_rotated, ...
                         map_sum),1);
                     %Correlation between blankedMap_rotated and map_sum
+                    [temp_map_smoothed, ~] = rotateAndPrep(smoothUnrotated, ...
+                        angle, sidePlusBuffer, rotatedCorners{angle});
+                    
+                    temp_corr = diag(corrcoef(temp_map_smoothed,map_sum),1);
+                    %Correlation between temp_map and map_sum
                     
                     angle_vs_corr(angle+1, 1) = angle;
                     angle_vs_corr(angle+1, 2) = temp_corr;
