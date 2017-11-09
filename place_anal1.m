@@ -1,3 +1,6 @@
+%Max overlap is determined by smoothed correlation instead of point
+%correlation
+
 sessions = [[8068 53]
     [8068 55]];
 numSessions = size(sessions, 1);
