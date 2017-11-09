@@ -1,5 +1,3 @@
-%Smooth matrix before checking correlation using overlap
-
 sessions = [[8068 53]
     [8068 55]];
 numSessions = size(sessions, 1);
@@ -206,8 +204,8 @@ for sess_i = 1:numSessions
     
     bufferWidth = (sidePlusBuffer-sideLength)/2;
     centredLocation = (bufferWidth+1:sideLength+bufferWidth);
-
-
+    
+    
     
     %Template to find corners in predictable locations following rotation.
     %Corners are marked with 1s to allow them to be found once rotation occurs.
@@ -217,14 +215,14 @@ for sess_i = 1:numSessions
     unrotatedCorners(sideLength+bufferWidth, bufferWidth+1) = 1; %Lower left corner
     unrotatedCorners(sideLength+bufferWidth, sideLength+bufferWidth) = 1; %Lower right corner
     
-    %Makes matrix which mimics the rotation of the buffered array for 
+    %Makes matrix which mimics the rotation of the buffered array for
     %1:maxRotation degrees.
     rotatedCorners = cell(maxRotations,1);
     for i = 1:maxRotations
         rotatedCorners{i} = imrotate(unrotatedCorners, i);
     end
-
-   
+    
+    
     for i = 1:ncells
         %Insert cut_maps into centre of buffered_maps
         if cut_map(1,1,i) < 0
@@ -238,51 +236,62 @@ for sess_i = 1:numSessions
     hasBaseMap = 0; %Indicates whether map_sum has been set to a
     %non-rotated map to enable rotational comparisons.
     
+    smoothfac_rot = 0.75; %Smoothing factor for matrix to be rotated
+    filterWidth_rot = 2; %Filter width for matrix to be rotated
+    
     for i = 1:ncells
         %Build nan_i after image rotation and cut down
         if buffered_map(1,1,i) ~= -1
             if hasBaseMap == 0
                 %Skip rotation
                 max_overlap = buffered_map(:,:,i);
-                nan_i = isnan(max_overlap(:,:)); 
+                nan_i = isnan(max_overlap(:,:));
                 max_overlap(nan_i) = 0;  % turn all NaN's to zero
                 hasBaseMap = 1;
             else
+                smoothUnrotated = buffered_map(:,:,i);
+                nan_i_smoothed = isnan(smoothUnrotated(:,:));
+                smoothUnrotated(nan_i_smoothed) = 0;
+                smoothUnrotated = smooth(smoothUnrotated, ...
+                    smoothfac_rot,filterWidth_rot,smoothfac_rot, ...
+                    filterWidth_rot);
+                
                 max_overlap = buffered_map(:,:,i);
-                nan_i = isnan(max_overlap(:,:)); 
+                nan_i = isnan(max_overlap(:,:));
                 max_overlap(nan_i) = 0;  % turn all NaN's to zero
                 
-                max_corr = diag(corrcoef(max_overlap,map_sum),1);
+                max_corr = diag(corrcoef(smoothUnrotated,map_sum),1);
                 %Correlation between max_overlap and map_sum
                 angle_vs_corr = zeros(maxRotations+1, 2);
                 angle_vs_corr(1,1) = 0;
                 angle_vs_corr(1,2) = max_corr;
-
+                
                 for angle = 1:maxRotations
                     
-                    [temp_map, nan_i_temp] = rotateAndPrep(buffered_map(:,:,i), ...
+                    [temp_map_smoothed, ~] = rotateAndPrep(smoothUnrotated, ...
                         angle, sidePlusBuffer, rotatedCorners{angle});
                     
-                    temp_corr = diag(corrcoef(temp_map,map_sum),1);
+                    temp_corr = diag(corrcoef(temp_map_smoothed,map_sum),1);
                     %Correlation between temp_map and map_sum
                     
                     angle_vs_corr(angle+1, 1) = angle;
                     angle_vs_corr(angle+1, 2) = temp_corr;
-                    %Check whether correlation from temp_map is better than 
+                    %Check whether correlation from temp_map is better than
                     %max_overlap. If yes, set max_overlap to rotated matrix.
                     
                     if temp_corr > max_corr
+                        [temp_map, nan_i_temp] = rotateAndPrep(buffered_map(:,:,i), ...
+                            angle, sidePlusBuffer, rotatedCorners{angle});
                         max_overlap = temp_map;
                         nan_i = nan_i_temp;
                         max_corr = temp_corr;
                     end
                 end
                 
-                
-                f = figure(1); 
+                f1 = figure(1);
                 %figure('Position', [1400 500 1000 1000]); %CCBN
-                set(f,'Position', [100 100 1000 800]); %Home
-                subplot(2,1,1);%, 'Xlim', [0 359]);                
+                set(f1,'Position', [100 100 1000 800]); %Home
+                subplot(2,1,1);%, 'Xlim', [0 359]);
                 plot(angle_vs_corr(:,1), angle_vs_corr(:,2));
                 xlim([0 359]);
                 title('Angle vs Correlation');
@@ -297,8 +306,9 @@ for sess_i = 1:numSessions
                 title('Rotated for max overlap');
                 pause;
                 
+                
             end
-
+            
             map_sum = map_sum + max_overlap;
             map_count = map_count + ~nan_i;
             
@@ -311,7 +321,7 @@ for sess_i = 1:numSessions
     
     figure;
     avg_map{sess_i} = map_sum./map_count;
-    nan_i_avg = isnan(avg_map{sess_i}(:,:)); 
+    nan_i_avg = isnan(avg_map{sess_i}(:,:));
     avg_map{sess_i}(nan_i_avg) = 0;
     subplot(1,2,1);
     imagesc(avg_map{sess_i});
