@@ -235,6 +235,8 @@ for sess_i = 1:numSessions
     
     hasBaseMap = 0; %Indicates whether map_sum has been set to a
     %non-rotated map to enable rotational comparisons.
+    smoothFac_corr = 0.25; %Smoothing factor for correlation array
+    filterWidth_corr = 5; %Filter width for correlation array
     
     smoothfac_rot = 0.75; %Smoothing factor for matrix to be rotated
     filterWidth_rot = 2; %Filter width for matrix to be rotated
@@ -286,6 +288,7 @@ for sess_i = 1:numSessions
                     %better than max_overlap. If yes, set max_overlap to 
                     %unblanked rotated matrix.
                     
+                    %{
                     if temp_corr > max_corr
                         [temp_map, nan_i_temp] = rotateAndPrep(buffered_map(:,:,i), ...
                         angle, sidePlusBuffer, rotatedCorners{angle});
@@ -294,14 +297,21 @@ for sess_i = 1:numSessions
                         nan_i = nan_i_temp;
                         max_corr = temp_corr;
                     end
+                    %}
                 end
                 
-                
+                smoothedCorr = smooth(angle_vs_corr(:,2), smoothFac_corr, ...
+                    filterWidth_corr, smoothFac_corr, filterWidth_corr);
+                [~, maxCorrIndex] = max(smoothedCorr);
+                angleMaxCorr = angle_vs_corr(maxCorrIndex,1);
+                [max_overlap, nan_i] = rotateAndPrep(buffered_map(:,:,i), ...
+                        angleMaxCorr, sidePlusBuffer, rotatedCorners{maxCorrIndex});
+                %{
                 f = figure(1); 
                 %figure('Position', [1400 500 1000 1000]); %CCBN
                 set(f,'Position', [100 100 1000 800]); %Home
                 subplot(2,1,1);%, 'Xlim', [0 359]);                
-                plot(angle_vs_corr(:,1), angle_vs_corr(:,2));
+                plot(angle_vs_corr(:,1), smoothedCorr);%angle_vs_corr(:,2));
                 xlim([0 359]);
                 title('Angle vs Correlation');
                 subplot(2,3,4);
@@ -314,7 +324,7 @@ for sess_i = 1:numSessions
                 imagesc(max_overlap);
                 title('Rotated for max overlap');
                 pause;
-                
+                %}
             end
 
             map_sum = map_sum + max_overlap;
