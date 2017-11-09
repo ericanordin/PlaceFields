@@ -280,7 +280,6 @@ for sess_i = 1:numSessions
                 f = figure(1); 
                 %figure('Position', [1400 500 1000 1000]); %CCBN
                 set(f,'Position', [100 100 1000 800]); %Home
-                %hold on;
                 subplot(2,1,1);%, 'Xlim', [0 359]);                
                 plot(angle_vs_corr(:,1), angle_vs_corr(:,2));
                 xlim([0 359]);
