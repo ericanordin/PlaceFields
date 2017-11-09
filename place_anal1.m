@@ -235,6 +235,7 @@ for sess_i = 1:numSessions
     
     hasBaseMap = 0; %Indicates whether map_sum has been set to a
     %non-rotated map to enable rotational comparisons.
+    
     smoothFac_corr = 0.25; %Smoothing factor for correlation array
     filterWidth_corr = 5; %Filter width for correlation array
     
@@ -260,9 +261,6 @@ for sess_i = 1:numSessions
                 unrotatedModified = blankCentre(unrotatedModified, sidePlusBuffer);
                 %unrotatedModified is smoothed and has its centre set to 0
                 
-                max_overlap = buffered_map(:,:,i);
-                nan_i = isnan(max_overlap(:,:)); 
-                max_overlap(nan_i) = 0;  % turn all NaN's to zero
                 
                 max_corr = diag(corrcoef(unrotatedModified, ...
                     map_sum),1);
@@ -287,17 +285,7 @@ for sess_i = 1:numSessions
                     %Check whether correlation from blankedMap_rotated is 
                     %better than max_overlap. If yes, set max_overlap to 
                     %unblanked rotated matrix.
-                    
-                    %{
-                    if temp_corr > max_corr
-                        [temp_map, nan_i_temp] = rotateAndPrep(buffered_map(:,:,i), ...
-                        angle, sidePlusBuffer, rotatedCorners{angle});
-                    
-                        max_overlap = temp_map;
-                        nan_i = nan_i_temp;
-                        max_corr = temp_corr;
-                    end
-                    %}
+
                 end
                 
                 smoothedCorr = smooth(angle_vs_corr(:,2), smoothFac_corr, ...
@@ -306,12 +294,12 @@ for sess_i = 1:numSessions
                 angleMaxCorr = angle_vs_corr(maxCorrIndex,1);
                 [max_overlap, nan_i] = rotateAndPrep(buffered_map(:,:,i), ...
                         angleMaxCorr, sidePlusBuffer, rotatedCorners{maxCorrIndex});
-                %{
+                
                 f = figure(1); 
                 %figure('Position', [1400 500 1000 1000]); %CCBN
                 set(f,'Position', [100 100 1000 800]); %Home
-                subplot(2,1,1);%, 'Xlim', [0 359]);                
-                plot(angle_vs_corr(:,1), smoothedCorr);%angle_vs_corr(:,2));
+                subplot(2,1,1);             
+                plot(angle_vs_corr(:,1), smoothedCorr);
                 xlim([0 359]);
                 title('Angle vs Correlation');
                 subplot(2,3,4);
@@ -324,7 +312,7 @@ for sess_i = 1:numSessions
                 imagesc(max_overlap);
                 title('Rotated for max overlap');
                 pause;
-                %}
+                
             end
 
             map_sum = map_sum + max_overlap;
