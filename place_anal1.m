@@ -1,3 +1,5 @@
+%Smooth matrix before checking correlation using overlap
+
 sessions = [[8068 53]
     [8068 55]];
 numSessions = size(sessions, 1);
