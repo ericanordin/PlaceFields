@@ -250,26 +250,37 @@ for sess_i = 1:numSessions
                 nan_i = isnan(max_overlap(:,:)); 
                 max_overlap(nan_i) = 0;  % turn all NaN's to zero
                 
-                max_corr = diag(corrcoef(max_overlap,map_sum),1);
-                %Correlation between max_overlap and map_sum
+                blankedMap_unrotated = blankCentre(buffered_map(:,:,i), sidePlusBuffer);
+                nan_i_blanked = isnan(blankedMap_unrotated(:,:)); 
+                blankedMap_unrotated(nan_i_blanked) = 0;  % turn all NaN's to zero
+                
+                max_corr = diag(corrcoef(blankedMap_unrotated, ...
+                    map_sum),1);
+                %Correlation between blankedMap_unrotated and map_sum
                 angle_vs_corr = zeros(maxRotations+1, 2);
                 angle_vs_corr(1,1) = 0;
                 angle_vs_corr(1,2) = max_corr;
-
+                
                 for angle = 1:maxRotations
                     
-                    [temp_map, nan_i_temp] = rotateAndPrep(buffered_map(:,:,i), ...
-                        angle, sidePlusBuffer, rotatedCorners{angle});
-                    
-                    temp_corr = diag(corrcoef(temp_map,map_sum),1);
-                    %Correlation between temp_map and map_sum
+                    [blankedMap_rotated, ~] = rotateAndPrep(...
+                        blankedMap_unrotated, angle, sidePlusBuffer, ...
+                        rotatedCorners{angle});
+
+                    temp_corr = diag(corrcoef(blankedMap_rotated, ...
+                        map_sum),1);
+                    %Correlation between blankedMap_rotated and map_sum
                     
                     angle_vs_corr(angle+1, 1) = angle;
                     angle_vs_corr(angle+1, 2) = temp_corr;
-                    %Check whether correlation from temp_map is better than 
-                    %max_overlap. If yes, set max_overlap to rotated matrix.
+                    %Check whether correlation from blankedMap_rotated is 
+                    %better than max_overlap. If yes, set max_overlap to 
+                    %unblanked rotated matrix.
                     
                     if temp_corr > max_corr
+                        [temp_map, nan_i_temp] = rotateAndPrep(buffered_map(:,:,i), ...
+                        angle, sidePlusBuffer, rotatedCorners{angle});
+                    
                         max_overlap = temp_map;
                         nan_i = nan_i_temp;
                         max_corr = temp_corr;

@@ -14,7 +14,7 @@ function blankedMatrix = blankCentre(unblankedMatrix, matrixLength, centreRadius
 % blankedMatrix = matrix after centre blanking
 
 if ~exist('centreRadius', 'var')
-    centreRadius = 5; %Default = 5 pixels
+    centreRadius = 10; %Default = 10 pixels
 end
 
 indexRange = 1:matrixLength;
