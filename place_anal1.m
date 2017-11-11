@@ -294,7 +294,7 @@ for sess_i = 1:numSessions
                 angleMaxCorr = angle_vs_corr(maxCorrIndex,1);
                 [max_overlap, nan_i] = rotateAndPrep(buffered_map(:,:,i), ...
                         angleMaxCorr, sidePlusBuffer, rotatedCorners{maxCorrIndex});
-                
+                %{
                 f = figure(1); 
                 %figure('Position', [1400 500 1000 1000]); %CCBN
                 set(f,'Position', [100 100 1000 800]); %Home
@@ -312,7 +312,7 @@ for sess_i = 1:numSessions
                 imagesc(max_overlap);
                 title('Rotated for max overlap');
                 pause;
-                
+                %}
             end
 
             map_sum = map_sum + max_overlap;
