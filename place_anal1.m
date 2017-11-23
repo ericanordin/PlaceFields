@@ -7,6 +7,11 @@ avg_map = cell(numSessions, 1);
 all_maps_sum = cell(numSessions,1);
 maxRotations = 359; %Highest degree of rotation to be checked, in increments of 1 degree
 
+fig10 = figure(10);
+set(fig10, 'Position', [100 100 1000 500]);
+%pbaspect([1 1 1]);
+tickVector = [0 20 40 60 80 100];
+
 for sess_i = 1:numSessions
     
     if 1
@@ -204,8 +209,8 @@ for sess_i = 1:numSessions
     
     bufferWidth = (sidePlusBuffer-sideLength)/2;
     centredLocation = (bufferWidth+1:sideLength+bufferWidth);
-
-
+    
+    
     
     %Template to find corners in predictable locations following rotation.
     %Corners are marked with 1s to allow them to be found once rotation occurs.
@@ -215,14 +220,14 @@ for sess_i = 1:numSessions
     unrotatedCorners(sideLength+bufferWidth, bufferWidth+1) = 1; %Lower left corner
     unrotatedCorners(sideLength+bufferWidth, sideLength+bufferWidth) = 1; %Lower right corner
     
-    %Makes matrix which mimics the rotation of the buffered array for 
+    %Makes matrix which mimics the rotation of the buffered array for
     %1:maxRotation degrees.
     rotatedCorners = cell(maxRotations,1);
     for i = 1:maxRotations
         rotatedCorners{i} = imrotate(unrotatedCorners, i);
     end
-
-   
+    
+    
     for i = 1:ncells
         %Insert cut_maps into centre of buffered_maps
         if cut_map(1,1,i) < 0
@@ -248,7 +253,7 @@ for sess_i = 1:numSessions
             if hasBaseMap == 0
                 %Skip rotation
                 max_overlap = buffered_map(:,:,i);
-                nan_i = isnan(max_overlap(:,:)); 
+                nan_i = isnan(max_overlap(:,:));
                 max_overlap(nan_i) = 0;  % turn all NaN's to zero
                 hasBaseMap = 1;
             else
@@ -265,27 +270,27 @@ for sess_i = 1:numSessions
                 max_corr = diag(corrcoef(unrotatedModified, ...
                     map_sum),1);
                 %Correlation between unrotatedModified and map_sum
-
+                
                 angle_vs_corr = zeros(maxRotations+1, 2);
                 angle_vs_corr(1,1) = 0;
                 angle_vs_corr(1,2) = max_corr;
-
+                
                 for angle = 1:maxRotations
                     
                     [rotatedModified, ~] = rotateAndPrep(...
                         unrotatedModified, angle, sidePlusBuffer, ...
                         rotatedCorners{angle});
-
+                    
                     temp_corr = diag(corrcoef(rotatedModified, ...
                         map_sum),1);
                     %Correlation between blankedMap_rotated and map_sum
                     
                     angle_vs_corr(angle+1, 1) = angle;
                     angle_vs_corr(angle+1, 2) = temp_corr;
-                    %Check whether correlation from blankedMap_rotated is 
-                    %better than max_overlap. If yes, set max_overlap to 
+                    %Check whether correlation from blankedMap_rotated is
+                    %better than max_overlap. If yes, set max_overlap to
                     %unblanked rotated matrix.
-
+                    
                 end
                 
                 smoothedCorr = smooth(angle_vs_corr(:,2), smoothFac_corr, ...
@@ -293,12 +298,12 @@ for sess_i = 1:numSessions
                 [~, maxCorrIndex] = max(smoothedCorr);
                 angleMaxCorr = angle_vs_corr(maxCorrIndex,1);
                 [max_overlap, nan_i] = rotateAndPrep(buffered_map(:,:,i), ...
-                        angleMaxCorr, sidePlusBuffer, rotatedCorners{maxCorrIndex});
+                    angleMaxCorr, sidePlusBuffer, rotatedCorners{maxCorrIndex});
                 %{
-                f = figure(1); 
+                f = figure(1);
                 %figure('Position', [1400 500 1000 1000]); %CCBN
                 set(f,'Position', [100 100 1000 800]); %Home
-                subplot(2,1,1);             
+                subplot(2,1,1);
                 plot(angle_vs_corr(:,1), smoothedCorr);
                 xlim([0 359]);
                 title('Angle vs Correlation');
@@ -312,9 +317,9 @@ for sess_i = 1:numSessions
                 imagesc(max_overlap);
                 title('Rotated for max overlap');
                 pause;
-                %}
+                    %}
             end
-
+            
             map_sum = map_sum + max_overlap;
             map_count = map_count + ~nan_i;
             
@@ -327,7 +332,7 @@ for sess_i = 1:numSessions
     
     figure;
     avg_map{sess_i} = map_sum./map_count;
-    nan_i_avg = isnan(avg_map{sess_i}(:,:)); 
+    nan_i_avg = isnan(avg_map{sess_i}(:,:));
     avg_map{sess_i}(nan_i_avg) = 0;
     subplot(1,2,1);
     imagesc(avg_map{sess_i});
@@ -338,6 +343,33 @@ for sess_i = 1:numSessions
     imagesc(smooth(avg_map{sess_i}, smoothfac, 9, smoothfac, 9));
     axis equal;
     
+    %For report (separate images):
+    %{
+    figure;
+    imagesc(avg_map{sess_i});
+    axis([1 100 1 100]);
+    title(['Session ' num2str(sess_i) ': Aligned, Rotated, Summed Place Fields']);
+    %}
+    
+    %For report (all images joined)
+    %{
+    figure(10);
+    subplot(1, numSessions+1, sess_i);
+    imagesc(avg_map{sess_i});
+    axis([1 100 1 100]);
+    title(['Session ' num2str(sess_i) ': Aligned, Rotated, Summed Place Fields']);
+    pbaspect([1 1 1]);
+    %}
+    
+    %For report (session images joined)
+    figure(10);
+    plotObj = subplot(1, numSessions, sess_i);
+    imagesc(avg_map{sess_i});
+    axis([1 100 1 100]);
+    title(['Session ' num2str(sess_i) ': Aligned, Rotated, Summed Place Fields']);
+    pbaspect([1 1 1]);
+    set(plotObj, 'Ydir', 'normal', 'YLimMode', 'manual', 'YTick', tickVector, ...
+        'XLimMode', 'manual', 'XTick', tickVector);
 end
 
 figure;
@@ -370,4 +402,27 @@ grand_avg_map = total_sum./nmaps;
 imagesc(grand_avg_map);
 axis equal;
 title(['Grand Avg Place Field, ' num2str(nmaps) ' Sessions']);
+
+%For report (separate):
+figure;
+plotObj = subplot(1,1,1);
+imagesc(grand_avg_map);
+axis([1 100 1 100]);
+title(['Aligned, Rotated, Summed Place Fields for ' num2str(nmaps) ' Sessions']);
+pbaspect([1 1 1]);
+set(plotObj, 'Ydir', 'normal', 'YLimMode', 'manual', 'YTick', tickVector, ...
+        'XLimMode', 'manual', 'XTick', tickVector);
+
+
+%For report (all images joined)
+%{
+figure(10);
+plotObj = subplot(1, numSessions+1, numSessions+1);
+imagesc(grand_avg_map);
+axis([1 100 1 100]);
+title(['Aligned, Rotated, Summed Place Fields for ' num2str(nmaps) ' Sessions']);
+pbaspect([1 1 1]);
+set(plotObj, 'Ydir', 'reverse', 'YLimMode', 'manual', 'YTick', tickVector, ...
+        'XLimMode', 'manual', 'XTick', tickVector);
+%}
 
